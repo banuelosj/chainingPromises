@@ -80,7 +80,7 @@
 
         const populatePanel = (response)=>{
             let graphic = response.results[0].graphic;
-            //populating the side panel with the feature's attributes
+            //populating the side-panel with the feature's attributes
             let data = `
                 <p>Incident Description: ${graphic.attributes.IncidentDescription}</p>
                 <p>Incident Location: ${graphic.attributes.IncidentLocation}</p>
@@ -90,7 +90,7 @@
             `;
 
             document.getElementById("outputDiv").innerHTML = data;
-            //return the feature for the next promise to use
+            //return the graphic for the next promise
             return graphic;
         }
 
@@ -101,12 +101,13 @@
           
           featureLayer.queryFeatureCount(queryParams)
             .then((featureCount)=>{
-              document.getElementById("featureCount").innerHTML = "Number of Features: " + featureCount; //returns the number of features that satisfy the query
+              //populate the side-panel with the number of features that satisfy the query
+              document.getElementById("featureCount").innerHTML = "Number of Features: " + featureCount; 
             })
             .catch((err)=>{
               console.log("failed at queryCount with error: " + err);
             });
-
+          //return the graphic for the next promse
           return graphic;
         }
 
@@ -118,7 +119,6 @@
               }
               //highlight the feature
               highlight = layerView.highlight(graphic);
-              //return the graphic to pass to the next promise
             })
             .catch((err)=>{
               console.log("failed to highlight feature: " + err);
