@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>Chaining Promises</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.10/esri/css/main.css">
+  <script src="https://js.arcgis.com/4.10/"></script>
+
+  <style>
+    html,
+    body{
+      padding: 0;
+      margin: 0;
+      height: 100%;
+    }
+
+    .divBase {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 74.9%;
+    }
+
+    .divPanel {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 24.9%; 
+    }
+
+    #panelDiv{
+        float: left;
+    }
+
+    #viewDiv {
+        float: right;
+    }
+  </style>
+
+  <script>
+    require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/FeatureLayer"
+      ],
+      function(
+        Map, MapView,
+        FeatureLayer
+      ) {
+
+        let highlight;
+
+        const featureLayer = new FeatureLayer({
+          url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/IncidentsReport/FeatureServer/0",
+          outFields: ["*"]
+        });
+
+        const map = new Map({
+          basemap: "hybrid",
+          layers: [featureLayer]
+        });
+
+        const view = new MapView({
+          container: "viewDiv",
+          map: map,
+          center: [-117.18, 34.06],
+          zoom: 15
+        });
+
+        //setting up the hitTest
+        view.on('click', function(event){
+            view.hitTest(event)
+              .then(populatePanel)
+              .then(queryIncidentCount) 
+              .then(highlightFeature) 
+              .catch(failingFunction);
+        });
+
+        const populatePanel = (response)=>{
+            let graphic = response.results[0].graphic;
+            //populating the side panel with the feature's attributes
+            let data = `
+                <p>Incident Description: ${graphic.attributes.IncidentDescription}</p>
+                <p>Incident Location: ${graphic.attributes.IncidentLocation}</p>
+                <p>Incident Type: ${graphic.attributes.IncidentType}</p>
+                <p>Latitude: ${graphic.geometry.latitude}</p>
+                <p>Longitude: ${graphic.geometry.longitude}</p>
+            `;
+
+            document.getElementById("outputDiv").innerHTML = data;
+            //return the feature for the next promise to use
+            return graphic;
+        }
+
+        const queryIncidentCount = (graphic)=>{
+          let queryParams = featureLayer.createQuery();
+          let incidentType = graphic.attributes.IncidentType;
+          queryParams.where = "IncidentType = " + incidentType;
+          
+          featureLayer.queryFeatureCount(queryParams)
+            .then((featureCount)=>{
+              document.getElementById("featureCount").innerHTML = "Number of Features: " + featureCount; //returns the number of features that satisfy the query
+            })
+            .catch((err)=>{
+              console.log("failed at queryCount with error: " + err);
+            });
+
+          return graphic;
+        }
+
+         const highlightFeature = (graphic)=>{
+          view.whenLayerView(graphic.layer)
+            .then((layerView)=>{
+              if(highlight){
+                highlight.remove();
+              }
+              //highlight the feature
+              highlight = layerView.highlight(graphic);
+              //return the graphic to pass to the next promise
+            })
+            .catch((err)=>{
+              console.log("failed to highlight feature: " + err);
+              return err;
+            })
+        }
+
+        const failingFunction = (error)=>{
+            //called when promise is rejected
+            document.getElementById("outputDiv").innerHTML = "Rejected with: " + error;
+        }
+
+
+
+      });
+  </script>
+</head>
+
+<body>
+  <div class="divPanel" id="panelDiv">
+      <h1 style="color:#4c4cff; text-align: center">Result from the Promise</h1> 
+      <hr style="border-top: #000000"> 
+      <h2 id="outputDiv"></h2>
+      <h2 id="featureCount"></h2>
+  </div>
+  <div class="divBase" id="viewDiv"></div>
+</body>
+
+</html>
